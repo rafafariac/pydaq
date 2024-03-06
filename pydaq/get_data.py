@@ -13,35 +13,36 @@ from pydaq.utils.base import Base
 
 class Get_data(Base):
     """
-        Class able to get data from data acquisition boards using (or not) a graphical user interface (GUI)
+    Class able to get data from data acquisition boards using (or not) a graphical user interface (GUI)
 
-        :author: Samir Angelo Milani Martins
-             - https://www.samirmartins.com.br
-             - https://www.github.com/samirmartins/
+    :author: Samir Angelo Milani Martins
+         - https://www.samirmartins.com.br
+         - https://www.github.com/samirmartins/
 
-        :param:
-            device: nidaq device from where data will be colected. Example: "Dev1"
-            channel: channel from where data will be acquired. Example: ai0
-            terminal: 'Diff', 'RSE' or 'NRSE': terminal configuration (differential, referenced single ended or non-referenced single ended)
-            com: arduino COM port. Example: 'COM1'
-            ts: sample period, in seconds.
-            session_duration: session duration, in seconds.
-            save: if True, saves data in path defined by path.
-            path: where data will be saved.
-            plot: if True, plot data iteractively as they are acquired
+    :param:
+        device: nidaq device from where data will be colected. Example: "Dev1"
+        channel: channel from where data will be acquired. Example: ai0
+        terminal: 'Diff', 'RSE' or 'NRSE': terminal configuration (differential, referenced single ended or non-referenced single ended)
+        com: arduino COM port. Example: 'COM1'
+        ts: sample period, in seconds.
+        session_duration: session duration, in seconds.
+        save: if True, saves data in path defined by path.
+        path: where data will be saved.
+        plot: if True, plot data iteractively as they are acquired
 
     """
 
-    def __init__(self,
-                 device="Dev1",
-                 channel="ai0",
-                 terminal='Diff',
-                 com='COM1',
-                 ts=0.5,
-                 session_duration=10.0,
-                 save=True,
-                 plot=True
-                 ):
+    def __init__(
+        self,
+        device="Dev1",
+        channel="ai0",
+        terminal="Diff",
+        com="COM1",
+        ts=0.5,
+        session_duration=10.0,
+        save=True,
+        plot=True,
+    ):
 
         super().__init__()
         self.device = device
@@ -65,21 +66,17 @@ class Get_data(Base):
         self.error_path = False
 
         # COM ports
-        self.com_ports = [
-            i.description for i in serial.tools.list_ports.comports()]
+        self.com_ports = [i.description for i in serial.tools.list_ports.comports()]
         self.com_port = com  # Default COM port
 
         # Plot title
         self.title = None
 
         # Plot legend
-        self.legend = ['Input']
+        self.legend = ["Input"]
 
         # Defining default path
-        self.path = os.path.join(
-            os.path.join(
-                os.path.expanduser('~')),
-            'Desktop')
+        self.path = os.path.join(os.path.join(os.path.expanduser("~")), "Desktop")
 
         # Arduino ADC resolution (in bits)
         self.arduino_ai_bits = 10
@@ -88,8 +85,7 @@ class Get_data(Base):
         self.ard_ai_max, self.ard_ai_min = 5, 0
 
         # Value per bit - Arduino
-        self.ard_vpb = (self.ard_ai_max - self.ard_ai_min) / \
-            (2**self.arduino_ai_bits)
+        self.ard_vpb = (self.ard_ai_max - self.ard_ai_min) / (2**self.arduino_ai_bits)
 
     def get_data_nidaq(self):
         """
@@ -112,11 +108,11 @@ class Get_data(Base):
         # Initializing device, with channel defined
         task = nidaqmx.Task()
         task.ai_channels.add_ai_voltage_chan(
-            self.device + '/' + self.channel,
-            terminal_config=self.terminal)
+            self.device + "/" + self.channel, terminal_config=self.terminal
+        )
 
         if self.plot:  # If plot, start updatable plot
-            self.title = f'PYDAQ - Data Acquisition. {self.device}, {self.channel}'
+            self.title = f"PYDAQ - Data Acquisition. {self.device}, {self.channel}"
             self._start_updatable_plot()
 
         # Main loop, where data will be acquired
@@ -137,14 +133,14 @@ class Get_data(Base):
                 # Checking if there is still an open figure. If not, stop the
                 # for loop.
                 try:
-                    plt.get_figlabels().index('iter_plot')
+                    plt.get_figlabels().index("iter_plot")
                 except BaseException:
                     break
 
                 # Updating data values
                 self._update_plot(self.time_var, self.data)
 
-            print(f'Iteration: {k} of {self.cycles-1}')
+            print(f"Iteration: {k} of {self.cycles-1}")
 
             # Getting end time
             et = time.time()
@@ -155,18 +151,19 @@ class Get_data(Base):
             except BaseException:
                 warnings.warn(
                     "Time spent to append data and update interface was greater than ts. "
-                    "You CANNOT trust time.dat")
+                    "You CANNOT trust time.dat"
+                )
 
         # Closing task
         task.close()
 
         # Check if data will or not be saved, and save accordingly
         if self.save:
-            print('\nSaving data ...')
+            print("\nSaving data ...")
             # Saving time_var and data
-            self._save_data(self.time_var, 'time.dat')
-            self._save_data(self.data, 'data.dat')
-            print('\nData saved ...')
+            self._save_data(self.time_var, "time.dat")
+            self._save_data(self.data, "data.dat")
+            print("\nData saved ...")
 
         return
 
@@ -181,56 +178,92 @@ class Get_data(Base):
         """
 
         # Theme
-        sg.theme('Dark')
+        sg.theme("Dark")
 
         # First the window layout in 2 columns
         first_column = [
-            [sg.Text('Choose device: ')],
-            [sg.Text('Choose channel: ')],
-            [sg.Text('Terminal Config.')],
+            [sg.Text("CCChoose device: ")],
+            [sg.Text("Choose channel: ")],
+            [sg.Text("Terminal Config.")],
             [sg.Text("Sample period (s)")],
             [sg.Text("Session duration (s)")],
-            [sg.Text('Plot data?')],
-            [sg.Text('Save data?')],
+            [sg.Text("Plot data?")],
+            [sg.Text("Save data?")],
             [sg.Text("Path")],
         ]
 
         try:
             chan = nidaqmx.system.device.Device(
-                self.device_names[0]).ai_physical_chans.channel_names
+                self.device_names[0]
+            ).ai_physical_chans.channel_names
             defchan = chan[0]
         except BaseException:
-            chan = ''
-            defchan = ''
+            chan = ""
+            defchan = ""
 
         # Second column
         second_column = [
-            [sg.DD(self.device_type, size=(40, 1), enable_events=True, default_value=self.device_type[0],
-                   key="-DDDev-")],
-            [sg.DD(chan, enable_events=True, size=(40, 1), default_value=defchan,
-                   key="-DDChan-")],
-            [sg.DD(['Diff', 'RSE', 'NRSE'], enable_events=True, size=(40, 1), default_value=['Diff'],
-                   key="-Terminal-")],
-            [sg.I(self.ts, enable_events=True, key='-TS-', size=(40, 1))],
-            [sg.I(self.session_duration, enable_events=True, key='-SD-', size=(40, 1))],
-            [sg.Radio("Yes", "plot_radio", default=True, key='-Plot-'), sg.Radio("No", "plot_radio", default=False)],
-            [sg.Radio("Yes", "save_radio", default=True, key='-Save-'), sg.Radio("No", "save_radio", default=False)],
-            [sg.In(size=(32, 1), enable_events=True, key="-Path-",
-                   default_text=os.path.join(os.path.join(os.path.expanduser('~')), 'Desktop')),
-             sg.FolderBrowse()],
+            [
+                sg.DD(
+                    self.device_type[0],
+                    size=(40, 1),
+                    enable_events=True,
+                    default_value=self.device_type[0],
+                    key="-DDDev-",
+                )
+            ],
+            [
+                sg.DD(
+                    chan,
+                    enable_events=True,
+                    size=(40, 1),
+                    default_value=defchan,
+                    key="-DDChan-",
+                )
+            ],
+            [
+                sg.DD(
+                    ["Diff", "RSE", "NRSE"],
+                    enable_events=True,
+                    size=(40, 1),
+                    default_value=["Diff"],
+                    key="-Terminal-",
+                )
+            ],
+            [sg.I(self.ts, enable_events=True, key="-TS-", size=(40, 1))],
+            [sg.I(self.session_duration, enable_events=True, key="-SD-", size=(40, 1))],
+            [
+                sg.Radio("Yes", "plot_radio", default=True, key="-Plot-"),
+                sg.Radio("No", "plot_radio", default=False),
+            ],
+            [
+                sg.Radio("Yes", "save_radio", default=True, key="-Save-"),
+                sg.Radio("No", "save_radio", default=False),
+            ],
+            [
+                sg.In(
+                    size=(32, 1),
+                    enable_events=True,
+                    key="-Path-",
+                    default_text=os.path.join(
+                        os.path.join(os.path.expanduser("~")), "Desktop"
+                    ),
+                ),
+                sg.FolderBrowse(),
+            ],
         ]
 
-        bottom_line = [
-            [sg.Button('GET DATA', key='-Start-', auto_size_button=True)]
-        ]
+        bottom_line = [[sg.Button("GET DATA", key="-Start-", auto_size_button=True)]]
 
         # ----- Full layout -----
         layout = [
-            [sg.Column(first_column, vertical_alignment='top'),
-             sg.VSeparator(),
-             sg.Column(second_column, vertical_alignment='center')],
+            [
+                sg.Column(first_column, vertical_alignment="top"),
+                sg.VSeparator(),
+                sg.Column(second_column, vertical_alignment="center"),
+            ],
             [sg.HSeparator()],
-            [sg.Column(bottom_line, vertical_alignment='center')]
+            [sg.Column(bottom_line, vertical_alignment="center")],
         ]
 
         window = sg.Window(
@@ -239,7 +272,8 @@ class Get_data(Base):
             resizable=False,
             finalize=True,
             element_justification="center",
-            font="Helvetica")
+            font="Helvetica",
+        )
 
         # Event Loop
         while True:
@@ -250,18 +284,18 @@ class Get_data(Base):
                 break
 
             # Start
-            if event == '-Start-':
+            if event == "-Start-":
 
                 try:
                     # Separating variables
-                    self.terminal = self.term_map[values['-Terminal-']]
-                    self.ts = float(values['-TS-'])
-                    self.session_duration = float(values['-SD-'])
-                    self.device = values['-DDChan-'].split('/')[0]
-                    self.channel = values['-DDChan-'].split('/')[1]
-                    self.save = values['-Save-']
-                    self.path = values['-Path-']
-                    self.plot = values['-Plot-']
+                    self.terminal = self.term_map[values["-Terminal-"]]
+                    self.ts = float(values["-TS-"])
+                    self.session_duration = float(values["-SD-"])
+                    self.device = values["-DDChan-"].split("/")[0]
+                    self.channel = values["-DDChan-"].split("/")[1]
+                    self.save = values["-Save-"]
+                    self.path = values["-Path-"]
+                    self.plot = values["-Plot-"]
 
                     # Restarting variables
                     self.data = []
@@ -280,15 +314,16 @@ class Get_data(Base):
             if event == "-DDDev-":
                 # Discovering new ai channels
                 new_ai_channels = nidaqmx.system.device.Device(
-                    self.device_names[self.device_type.index(values['-DDDev-'])]).ai_physical_chans.channel_names
+                    self.device_names[self.device_type.index(values["-DDDev-"])]
+                ).ai_physical_chans.channel_names
                 # Default channel
                 try:
                     default_channel = new_ai_channels[0]
                 except BaseException:
-                    default_channel = 'There is no analog input in this board'
+                    default_channel = "There is no analog input in this board"
 
                 # Rewriting new ai channels into the right place
-                window['-DDChan-'].update(default_channel, new_ai_channels)
+                window["-DDChan-"].update(default_channel, new_ai_channels)
 
         window.close()
 
@@ -317,9 +352,8 @@ class Get_data(Base):
         self._open_serial()
 
         if self.plot:  # If plot, start updatable plot
-            self.title = f'PYDAQ - Data Acquisition. Arduino, Port: {self.com_port}'
+            self.title = f"PYDAQ - Data Acquisition. Arduino, Port: {self.com_port}"
             self._start_updatable_plot()
-
 
         time.sleep(2)  # Wait for Arduino and Serial to start up
 
@@ -332,8 +366,7 @@ class Get_data(Base):
             # Acquire data
             self.ser.reset_input_buffer()  # Reseting serial input buffer
             # Get the last complete value
-            temp = int(self.ser.read(14).split()
-                       [-2].decode('UTF-8')) * self.ard_vpb
+            temp = int(self.ser.read(14).split()[-2].decode("UTF-8")) * self.ard_vpb
 
             # Queue data in a list
             self.data.append(temp)
@@ -344,14 +377,14 @@ class Get_data(Base):
                 # Checking if there is still an open figure. If not, stop the
                 # for loop.
                 try:
-                    plt.get_figlabels().index('iter_plot')
+                    plt.get_figlabels().index("iter_plot")
                 except BaseException:
                     break
 
                 # Updating data values
                 self._update_plot(self.time_var, self.data)
 
-            print(f'Iteration: {k} of {self.cycles-1}')
+            print(f"Iteration: {k} of {self.cycles-1}")
 
             # Getting end time
             et = time.time()
@@ -362,18 +395,19 @@ class Get_data(Base):
             except BaseException:
                 warnings.warn(
                     "Time spent to append data and update interface was greater than ts. "
-                    "You CANNOT trust time.dat")
+                    "You CANNOT trust time.dat"
+                )
 
         # Closing port
         self.ser.close()
 
         # Check if data will or not be saved, and save accordingly
         if self.save:
-            print('\nSaving data ...')
+            print("\nSaving data ...")
             # Saving time_var and data
-            self._save_data(self.time_var, 'time.dat')
-            self._save_data(self.data, 'data.dat')
-            print('\nData saved ...')
+            self._save_data(self.time_var, "time.dat")
+            self._save_data(self.data, "data.dat")
+            print("\nData saved ...")
         return
 
     def get_data_arduino_gui(self):
@@ -387,41 +421,63 @@ class Get_data(Base):
         """
 
         # Theme
-        sg.theme('Dark')
+        sg.theme("Dark")
 
         # First the window layout in 2 columns
         first_column = [
-            [sg.Text('Choose your arduino: ')],
+            [sg.Text("Choose your arduino: ")],
             [sg.Text("Sample period (s)")],
             [sg.Text("Session duration (s)")],
-            [sg.Text('Plot data?')],
-            [sg.Text('Save data?')],
+            [sg.Text("Plot data?")],
+            [sg.Text("Save data?")],
             [sg.Text("Path")],
         ]
 
         # Second column
         second_column = [
-            [sg.DD(self.com_ports, size=(40, 1), enable_events=True, default_value=self.com_ports[-1], key="-COM-")],
-            [sg.I(self.ts, enable_events=True, key='-TS-', size=(40, 1))],
-            [sg.I(self.session_duration, enable_events=True, key='-SD-', size=(40, 1))],
-            [sg.Radio("Yes", "plot_radio", default=True, key='-Plot-'), sg.Radio("No", "plot_radio", default=False)],
-            [sg.Radio("Yes", "save_radio", default=True, key='-Save-'), sg.Radio("No", "save_radio", default=False)],
-            [sg.In(size=(32, 1), enable_events=True, key="-Path-",
-                   default_text=os.path.join(os.path.join(os.path.expanduser('~')), 'Desktop')),
-             sg.FolderBrowse()],
+            [
+                sg.DD(
+                    self.com_ports,
+                    size=(40, 1),
+                    enable_events=True,
+                    default_value=self.com_ports[-1],
+                    key="-COM-",
+                )
+            ],
+            [sg.I(self.ts, enable_events=True, key="-TS-", size=(40, 1))],
+            [sg.I(self.session_duration, enable_events=True, key="-SD-", size=(40, 1))],
+            [
+                sg.Radio("Yes", "plot_radio", default=True, key="-Plot-"),
+                sg.Radio("No", "plot_radio", default=False),
+            ],
+            [
+                sg.Radio("Yes", "save_radio", default=True, key="-Save-"),
+                sg.Radio("No", "save_radio", default=False),
+            ],
+            [
+                sg.In(
+                    size=(32, 1),
+                    enable_events=True,
+                    key="-Path-",
+                    default_text=os.path.join(
+                        os.path.join(os.path.expanduser("~")), "Desktop"
+                    ),
+                ),
+                sg.FolderBrowse(),
+            ],
         ]
 
-        bottom_line = [
-            [sg.Button('GET DATA', key='-Start-', auto_size_button=True)]
-        ]
+        bottom_line = [[sg.Button("GET DATA", key="-Start-", auto_size_button=True)]]
 
         # ----- Full layout -----
         layout = [
-            [sg.Column(first_column, vertical_alignment='top'),
-             sg.VSeparator(),
-             sg.Column(second_column, vertical_alignment='center')],
+            [
+                sg.Column(first_column, vertical_alignment="top"),
+                sg.VSeparator(),
+                sg.Column(second_column, vertical_alignment="center"),
+            ],
             [sg.HSeparator()],
-            [sg.Column(bottom_line, vertical_alignment='center')]
+            [sg.Column(bottom_line, vertical_alignment="center")],
         ]
 
         window = sg.Window(
@@ -430,7 +486,8 @@ class Get_data(Base):
             resizable=False,
             finalize=True,
             element_justification="center",
-            font="Helvetica")
+            font="Helvetica",
+        )
 
         # Event Loop
         while True:
@@ -441,17 +498,18 @@ class Get_data(Base):
                 break
 
             # Start
-            if event == '-Start-':
+            if event == "-Start-":
 
                 try:
                     # Separating variables
-                    self.ts = float(values['-TS-'])
-                    self.session_duration = float(values['-SD-'])
-                    self.com_port = serial.tools.list_ports.comports(
-                    )[self.com_ports.index(values['-COM-'])].name
-                    self.save = values['-Save-']
-                    self.path = values['-Path-']
-                    self.plot = values['-Plot-']
+                    self.ts = float(values["-TS-"])
+                    self.session_duration = float(values["-SD-"])
+                    self.com_port = serial.tools.list_ports.comports()[
+                        self.com_ports.index(values["-COM-"])
+                    ].name
+                    self.save = values["-Save-"]
+                    self.path = values["-Path-"]
+                    self.plot = values["-Plot-"]
 
                     # Restarting variables
                     self.data = []
@@ -466,14 +524,14 @@ class Get_data(Base):
                 if not self.error_path:
                     self.get_data_arduino()
 
-            if event == '-COM-':  # Updating com ports
+            if event == "-COM-":  # Updating com ports
 
                 self.com_ports = [
-                    i.description for i in serial.tools.list_ports.comports()]
-                port = values['-COM-']
-                window['-COM-'].update(port, self.com_ports)
+                    i.description for i in serial.tools.list_ports.comports()
+                ]
+                port = values["-COM-"]
+                window["-COM-"].update(port, self.com_ports)
 
         window.close()
 
         return
-

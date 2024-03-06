@@ -30,7 +30,14 @@ classifiers = [
     "Operating System :: OS Independent",
 
 ]
-dependencies = ["numpy", "nidaqmx", "matplotlib", "PySimpleGUI", "PyQt5", "pyserial"]
+dependencies = [
+  'numpy',
+  'nidaqmx', 
+  'matplotlib', 
+  'PySimpleGUI == 4.60.5', 
+  'PyQt5', 
+  'pyserial'
+  ]
 
 [project.urls]
 homepage = "https://github.com/samirmartins/pydaq"

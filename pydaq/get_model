@@ -1,0 +1,31 @@
+import PySimpleGUI as sg
+
+sg.theme("Dark")
+
+layout = [
+    [sg.Text("Arduino Model", size=(13, 1))],
+    [sg.Combo(["Opção 1", "Opção 2", "Opção 3"], size=(12, 1))],
+    [sg.Text("Sample period (s)", size=(17, 1))],
+    [sg.InputText(size=(15, 1))],
+    [sg.Text("Section duration (s)", size=(20, 1))],
+    [sg.InputText(size=(15, 1))],
+    [sg.Text("Imput signal", size=(12, 1))],
+    [sg.Combo(["Opção 1", "Opção 2", "Opção 3"], size=(12, 1))],
+    [sg.Text("Bits:", size=(10, 1)), sg.InputText(size=(15, 1))],
+    [sg.Text("seed:", size=(10, 1)), sg.InputText(size=(15, 1))],
+    [sg.Text("var_tb:", size=(10, 1)), sg.InputText(size=(15, 1))],
+    [sg.Text("Plot data?", size=(10, 1)), sg.Checkbox("yes"), sg.Checkbox("no")],
+    [sg.Text("Save data?", size=(10, 1)), sg.Checkbox("yes"), sg.Checkbox("no")],
+    [sg.Text("Path", size=(4, 1))],
+    [sg.InputText(size=(15, 1))],
+    [sg.Button("OK", size=(10, 1))],
+    [sg.Button("Cancel", size=(10, 1))],
+]
+
+window = sg.Window("Minha Interface", layout)
+while True:
+    event, values = window.read()
+    if event == sg.WINDOW_CLOSED or event == "OK" or event == "Cancel":
+        break
+
+window.close()
