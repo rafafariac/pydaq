@@ -145,3 +145,22 @@ def test_save_data_step(step):
     os.remove(os.path.join(step.path, 'test.dat'))
 
     print('\n[Step_response - _save_data] - Test Passed!')
+
+@pytest.mark.parametrize("prbs_bits, prbs_seed, prbs_var_tb", [
+    (3, None, 1),
+    (4, 123, 1),
+    (5, None, 2),
+    (6, 456, 3),
+])
+def test_prbs_generation(prbs_bits, prbs_seed, prbs_var_tb):
+    signal = Signal(prbs_bits, prbs_seed, prbs_var_tb)
+    assert len(signal.sinal_prbs) == (2**prbs_bits - 1) * prbs_var_tb
+    assert all(bit in [True, False] for bit in signal.sinal_prbs)
+
+@pytest.mark.parametrize("prbs_bits, prbs_seed", [
+    (4, 123),
+    (5, 100),
+])
+def test_prbs_seed(prbs_bits, prbs_seed):
+    signal = Signal(prbs_bits, prbs_seed)
+    assert signal.prbs_seed == prbs_seed
