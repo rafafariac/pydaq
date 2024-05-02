@@ -118,6 +118,11 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+mald2/
+mald/
+funf/
+
+
 
 # Spyder project settings
 .spyderproject

@@ -9,12 +9,12 @@ sg.theme("Dark")
 
 def show_arduino_form():
     layout = [
-        [sg.Text("Qual operação a ser feita?")],
+        [sg.Text("What operation to be performed?")],
         [sg.Button("Get_data")],
         [sg.Button("Send_data")],
         [sg.Button("Step_response")],
         [sg.Button("Get_model")],
-        [sg.Button("Cancelar")],
+        [sg.Button("Cancel")],
     ]
 
     window = sg.Window("Pydaq - Arduino", layout)
@@ -22,34 +22,30 @@ def show_arduino_form():
     while True:
         event, _ = window.read()
 
-        if event == sg.WINDOW_CLOSED or event == "Cancelar":
+        if event == sg.WINDOW_CLOSED or event == "Cancel":
             break
         elif event == "Get_data":
-            print("Get_data clicado")
             g = Get_data()
             g.get_data_arduino_gui()
         elif event == "Send_data":
-            print("Send_data clicado")
             s = Send_data()
             s.send_data_arduino_gui()
         elif event == "Step_response":
-            print("Step_response clicado")
             r = Step_response()
             r.step_response_arduino_gui()
         elif event == "Get_model":
-            print("Get_model clicado")
             break
     window.close()
 
 
 def show_nidaq_form():
     layout = [
-        [sg.Text("Qual operação a ser feita?")],
+        [sg.Text("What operation to be performed?")],
         [sg.Button("Get_data")],
         [sg.Button("Send_data")],
         [sg.Button("Step_response")],
         [sg.Button("Get_model")],
-        [sg.Button("Cancelar")],
+        [sg.Button("Cancel")],
     ]
 
     window = sg.Window("Pydaq - Nidaq", layout)
@@ -57,7 +53,7 @@ def show_nidaq_form():
     while True:
         event, _ = window.read()
 
-        if event == sg.WINDOW_CLOSED or event == "Cancelar":
+        if event == sg.WINDOW_CLOSED or event == "Cancel":
             break
         elif event == "Get_data":
             print("Get_data clicado")
@@ -72,20 +68,18 @@ def show_nidaq_form():
 
 
 layout = [
-    [sg.Text("Escolha uma opção:")],
-    [sg.Button("Arduino"), sg.Button("NIDAQ"), sg.Button("Cancelar")],
+    [sg.Text("Choose an option:")],
+    [sg.Button("Arduino"), sg.Button("NIDAQ"), sg.Button("Cancel")],
 ]
 
 window = sg.Window("Pydaq", layout)
 while True:
     event, values = window.read()
-    if event == sg.WINDOW_CLOSED or event == "Cancelar":
+    if event == sg.WINDOW_CLOSED or event == "Cancel":
         break
     elif event == "Arduino":
-        print("Abrindo a opção para arduino")
         show_arduino_form()
     elif event == "NIDAQ":
-        print("Abrindo a opção para NIDAQ")
         show_nidaq_form()
 
 window.close()
