@@ -2,6 +2,7 @@ import PySimpleGUI as sg
 from pydaq.get_data import Get_data
 from pydaq.send_data import Send_data
 from pydaq.step_response import Step_response
+from pydaq.get_model import Get_model
 
 
 sg.theme("Dark")
@@ -34,7 +35,8 @@ def show_arduino_form():
             r = Step_response()
             r.step_response_arduino_gui()
         elif event == "Get_model":
-            break
+            s = Get_model()
+            s.get_model_arduino_gui()
     window.close()
 
 
