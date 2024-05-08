@@ -33,6 +33,10 @@ class Get_model(Base):
         self.session_duration = session_duration
         self.save = save
         self.plot = plot
+        self.signal = Signal(3, 100, 1)
+
+        self.out_read = []
+        self.time_var = []
 
         # Error flags
         self.error_path = False
@@ -58,6 +62,71 @@ class Get_model(Base):
 
         # Value per bit - Arduino
         self.ard_vpb = (self.ard_ai_max - self.ard_ai_min) / (2**self.arduino_ai_bits)
+
+        # Number of necessary cycles
+        self.cycles = None
+
+    def get_model_arduino(self):
+        sinal = self.signal.sinal_prbs
+        self.data = []
+        self.time_var = []
+
+        self._check_path()
+
+        self.cycles = len(sinal)
+
+        self._open_serial()
+
+        self.data_send = [b"1" if i == 1 else b"0" for i in sinal]
+        sinal = np.array(sinal)
+
+        if self.plot:  # If plot, start updatable plot
+            self.title = f"PYDAQ - Sending Data. Arduino, Port: {self.com_port}"
+            self._start_updatable_plot()
+
+        time.sleep(2)
+
+        for k in range(self.cycles):
+
+            st = time.time()
+
+            self.ser.reset_input_buffer()  # Reseting serial input buffer
+            self.ser.write(self.data_send[k])
+
+            temp = int(self.ser.read(14).split()[-2].decode("UTF-8")) * self.ard_vpb
+
+            self.out_read.append(temp)
+
+            self.time_var.append(k * self.ts)
+            if self.plot:
+
+                # Checking if there is still an open figure. If not, stop the for loop.
+                try:
+                    plt.get_figlabels().index("iter_plot")
+                except:
+                    break
+
+                # Updating data values
+                self._update_plot(
+                    [self.time_var, self.time_var],
+                    [sinal[0 : k + 1], self.out_read[0 : k + 1]],
+                    2,
+                )
+            print(f"Iteration: {k} of {self.cycles-1}")
+
+            et = time.time()
+
+            try:
+                time.sleep(self.ts + (st - et))
+            except:
+                warnings.warn(
+                    "Time spent to append data and update interface was greater than ts. "
+                    "You CANNOT trust time.dat"
+                )
+
+        self.ser.write(b"0")
+        self.ser.close()
+        return
 
     def get_model_arduino_gui(self):
 
@@ -87,7 +156,7 @@ class Get_model(Base):
             [sg.I(self.session_duration, enable_events=True, key="-SD-", size=(40, 1))],
             [
                 sg.DD(
-                    values=("PRBS", "1", "2"),
+                    values=("PRBS", ""),
                     enable_events=True,
                     key="-Sig_type-",
                     size=(40, 1),
@@ -116,7 +185,7 @@ class Get_model(Base):
 
         third_column = []
 
-        bottom_line = [[sg.Button("GET MODEL")]]
+        bottom_line = [[sg.Button("GET MODEL", key="-Start-", auto_size_button=True)]]
 
         layout = [
             [
@@ -142,11 +211,11 @@ class Get_model(Base):
         prbs_infos = [
             [sg.Text("Input Informations")],
             [sg.Text("Bits:")],
-            [sg.InputText("", size=(6, 1))],
+            [sg.InputText("", key="-prbs_n_bits-", size=(6, 1))],
             [sg.Text("Seed:")],
-            [sg.InputText("", size=(6, 1))],
+            [sg.InputText("", key="-prbs_seed-", size=(6, 1))],
             [sg.Text("TB_var:")],
-            [sg.InputText("", size=(6, 1))],
+            [sg.InputText("", key="-prbs_var_tb-", size=(6, 1))],
         ]
         window.extend_layout(window["-third_column-"], prbs_infos)
         window["-third_column-"].update(visible=False)
@@ -162,6 +231,34 @@ class Get_model(Base):
             if event == "-Sig_type-":
                 if values["-Sig_type-"] == "PRBS":
                     window["-third_column-"].update(visible=True)
+            if event == "-Start-":
+                print("oi")
+                try:
+
+                    # Separating variables
+                    self.ts = float(values["-TS-"])
+                    self.session_duration = float(values["-SD-"])
+                    self.com_port = serial.tools.list_ports.comports()[
+                        self.com_ports.index(values["-COM-"])
+                    ].name
+                    self.save = values["-Save-"]
+                    self.path = values["-Path-"]
+                    self.plot = values["-Plot-"]
+                    self.signal = Signal(
+                        values["-prbs_n_bits-"],
+                        values["-prbs_seed-"],
+                        values["-prbs_var_tb-"],
+                    )
+                    self.out_read = []
+
+                except BaseException:
+                    self._error_window()
+                    self.error_path = True
+
+                # Calling data aquisition method
+                if not self.error_path:
+                    self.get_model_arduino()
+
         window.close()
 
         return
