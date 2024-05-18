@@ -34,6 +34,7 @@ class Get_model(Base):
         self.save = save
         self.plot = plot
         self.signal = Signal(3, 100, 1)
+        self.legend = ["Output", "Input"]
 
         self.out_read = []
         self.time_var = []
@@ -81,7 +82,7 @@ class Get_model(Base):
         sinal = np.array(sinal)
 
         if self.plot:  # If plot, start updatable plot
-            self.title = f"PYDAQ - Sending Data. Arduino, Port: {self.com_port}"
+            self.title = f"PYDAQ - Geting Data. Arduino, Port: {self.com_port}"
             self._start_updatable_plot()
 
         time.sleep(2)
@@ -93,7 +94,7 @@ class Get_model(Base):
             self.ser.reset_input_buffer()  # Reseting serial input buffer
             self.ser.write(self.data_send[k])
 
-            temp = int(self.ser.read(14).split()[-2].decode("UTF-8")) * self.ard_vpb
+            temp = int(self.ser.read(13).split()[-2].decode("UTF-8")) * self.ard_vpb
 
             self.out_read.append(temp)
 
@@ -103,7 +104,7 @@ class Get_model(Base):
                 # Checking if there is still an open figure. If not, stop the for loop.
                 try:
                     plt.get_figlabels().index("iter_plot")
-                except:
+                except BaseException:
                     break
 
                 # Updating data values
@@ -222,10 +223,9 @@ class Get_model(Base):
         while True:
 
             event, values = window.read()
-
+            print(values["-Sig_type-"])
             if values["-Sig_type-"] != "PRBS":
                 window["-third_column-"].update(visible=False)
-
             if event == sg.WIN_CLOSED:
                 break
             if event == "-Sig_type-":
@@ -234,6 +234,8 @@ class Get_model(Base):
             if event == "-Start-":
                 print("oi")
                 try:
+
+                    self.data, self.time_var = [], []
 
                     # Separating variables
                     self.ts = float(values["-TS-"])
@@ -245,10 +247,11 @@ class Get_model(Base):
                     self.path = values["-Path-"]
                     self.plot = values["-Plot-"]
                     self.signal = Signal(
-                        values["-prbs_n_bits-"],
-                        values["-prbs_seed-"],
-                        values["-prbs_var_tb-"],
+                        int(values["-prbs_n_bits-"]),
+                        int(values["-prbs_seed-"]),
+                        int(values["-prbs_var_tb-"]),
                     )
+
                     self.out_read = []
 
                 except BaseException:
