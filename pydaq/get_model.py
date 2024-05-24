@@ -10,6 +10,19 @@ import serial
 import serial.tools.list_ports
 from pydaq.utils.base import Base
 from pydaq.utils.PRBS import Signal
+from sysidentpy.parameter_estimation import Estimators
+
+import pandas as pd
+from sysidentpy.model_structure_selection import FROLS
+from sysidentpy.basis_function._basis_function import Polynomial
+from sysidentpy.metrics import root_relative_squared_error
+from sysidentpy.utils.generate_data import get_siso_data
+from sysidentpy.utils.display_results import results
+from sysidentpy.utils.plotting import plot_residues_correlation, plot_results
+from sysidentpy.residues.residues_correlation import (
+    compute_residues_autocorrelation,
+    compute_cross_correlation,
+)
 
 
 class Get_model(Base):
@@ -33,7 +46,7 @@ class Get_model(Base):
         self.session_duration = session_duration
         self.save = save
         self.plot = plot
-        self.signal = Signal(3, 100, 1)
+        self.signal = Signal(6, 100, 1)
         self.legend = ["Output", "Input"]
 
         self.out_read = []
@@ -127,6 +140,7 @@ class Get_model(Base):
 
         self.ser.write(b"0")
         self.ser.close()
+
         return
 
     def get_model_arduino_gui(self):
@@ -134,6 +148,7 @@ class Get_model(Base):
         sg.theme("Dark")
 
         first_column = [
+            [sg.Text("Data acquisition", font=("Helvetica", 12, "bold"))],
             [sg.Text("Choose your arduino: ")],
             [sg.Text("Sample period (s)")],
             [sg.Text("Session duration (s)")],
@@ -141,6 +156,13 @@ class Get_model(Base):
             [sg.Text("Plot data?")],
             [sg.Text("Save data?")],
             [sg.Text("Path")],
+            [sg.Text("   ")],
+            [sg.Text("System Identification", font=("Helvetica", 12, "bold"))],
+            [sg.Text("Output lag")],
+            [sg.Text("Input lag")],
+            [sg.Text("Number of information values")],
+            [sg.Text("Estimator")],
+            [sg.Text("Extended least squares algorithm")],
         ]
 
         second_column = [
@@ -182,6 +204,18 @@ class Get_model(Base):
                 ),
                 sg.FolderBrowse(),
             ],
+            [sg.Text("    ")],
+            [sg.Text("   ")],
+            [sg.Spin([i + 1 for i in range(1000)], size=(40, 1))],
+            [sg.Spin([i + 1 for i in range(1000)], size=(40, 1))],
+            [sg.Spin([i + 1 for i in range(1000)], size=(40, 1))],
+            [
+                sg.DD(
+                    values=[i for i in Estimators.__dict__.keys() if i[:1] != "_"],
+                    size=(40, 1),
+                )
+            ],
+            [sg.DD(values=("True", "False"), size=(40, 1))],
         ]
 
         third_column = []
@@ -210,7 +244,7 @@ class Get_model(Base):
         )
 
         prbs_infos = [
-            [sg.Text("Input Informations")],
+            [sg.Text("Input Informations", font=("Helvetica", 12, "bold"))],
             [sg.Text("Bits:")],
             [sg.InputText("", key="-prbs_n_bits-", size=(6, 1))],
             [sg.Text("Seed:")],
