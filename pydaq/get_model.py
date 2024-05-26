@@ -47,7 +47,7 @@ class Get_model(Base):
         self.save = save
         self.plot = plot
         self.signal = Signal(6, 100, 1)
-        self.legend = ["Output", "Input"]
+        self.legend = ["Input", "Output"]
 
         self.out_read = []
         self.time_var = []
@@ -61,9 +61,6 @@ class Get_model(Base):
 
         # Plot title
         self.title = None
-
-        # Plot legend
-        self.legend = ["Input"]
 
         # Defining default path
         self.path = os.path.join(os.path.join(os.path.expanduser("~")), "Desktop")
@@ -79,6 +76,10 @@ class Get_model(Base):
 
         # Number of necessary cycles
         self.cycles = None
+
+        self.prbs_bits = 6
+        self.prbs_seed = 100
+        self.prbs_tb_var = 1
 
     def get_model_arduino(self):
         sinal = self.signal.sinal_prbs
@@ -246,12 +247,13 @@ class Get_model(Base):
         prbs_infos = [
             [sg.Text("Input Informations", font=("Helvetica", 12, "bold"))],
             [sg.Text("Bits:")],
-            [sg.InputText("", key="-prbs_n_bits-", size=(6, 1))],
+            [sg.Input(self.prbs_bits, key="-prbs_n_bits-", size=(6, 1))],
             [sg.Text("Seed:")],
-            [sg.InputText("", key="-prbs_seed-", size=(6, 1))],
+            [sg.Input(self.prbs_seed, key="-prbs_seed-", size=(6, 1))],
             [sg.Text("TB_var:")],
-            [sg.InputText("", key="-prbs_var_tb-", size=(6, 1))],
+            [sg.Input(self.prbs_tb_var, key="-prbs_var_tb-", size=(6, 1))],
         ]
+
         window.extend_layout(window["-third_column-"], prbs_infos)
         window["-third_column-"].update(visible=False)
         while True:
