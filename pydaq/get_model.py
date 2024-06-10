@@ -11,7 +11,7 @@ import serial.tools.list_ports
 from pydaq.utils.base import Base
 from pydaq.utils.PRBS import Signal
 from sysidentpy.parameter_estimation import Estimators
-
+from math import floor
 import pandas as pd
 from sysidentpy.model_structure_selection import FROLS
 from sysidentpy.basis_function._basis_function import Polynomial
@@ -23,7 +23,6 @@ from sysidentpy.residues.residues_correlation import (
     compute_residues_autocorrelation,
     compute_cross_correlation,
 )
-from math import floor
 
 
 class Get_model(Base):
