@@ -23,6 +23,7 @@ from sysidentpy.residues.residues_correlation import (
     compute_residues_autocorrelation,
     compute_cross_correlation,
 )
+from math import floor
 
 
 class Get_model(Base):
@@ -33,7 +34,7 @@ class Get_model(Base):
         channel="ai0",
         terminal="Diff",
         com="COM1",
-        ts=0.5,
+        tb=0.5,
         session_duration=10.0,
         save=True,
         plot=True,
@@ -42,8 +43,7 @@ class Get_model(Base):
         super().__init__()
         self.device = device
         self.channel = channel
-        self.ts = ts
-        self.session_duration = session_duration
+        self.tb = tb
         self.save = save
         self.plot = plot
         self.signal = Signal(6, 100, 1)
@@ -77,9 +77,9 @@ class Get_model(Base):
         # Number of necessary cycles
         self.cycles = None
 
+        # PRBS values
         self.prbs_bits = 6
         self.prbs_seed = 100
-        self.prbs_tb_var = 1
 
     def get_model_arduino(self):
         sinal = self.signal.sinal_prbs
@@ -112,7 +112,7 @@ class Get_model(Base):
 
             self.out_read.append(temp)
 
-            self.time_var.append(k * self.ts)
+            self.time_var.append(k * self.tb)
             if self.plot:
 
                 # Checking if there is still an open figure. If not, stop the for loop.
@@ -132,7 +132,7 @@ class Get_model(Base):
             et = time.time()
 
             try:
-                time.sleep(self.ts + (st - et))
+                time.sleep(self.tb + (st - et))
             except:
                 warnings.warn(
                     "Time spent to append data and update interface was greater than ts. "
@@ -142,6 +142,72 @@ class Get_model(Base):
         self.ser.write(b"0")
         self.ser.close()
 
+        data_x = sinal
+        data_y = np.array(self.out_read)
+        perc_index = floor(data_x.shape[0] - data_x.shape[0] * (self.perc_value / 100))
+
+        x_train, x_valid = (
+            data_x[0:perc_index].reshape(-1, 1),
+            data_x[perc_index:].reshape(-1, 1),
+        )
+        y_train, y_valid = (
+            data_y[0:perc_index].reshape(-1, 1),
+            data_y[perc_index:].reshape(-1, 1),
+        )
+
+        basis_function = Polynomial(degree=self.degree)
+
+        model = FROLS(
+            order_selection=True,
+            n_info_values=self.num_info_val,
+            extended_least_squares=self.ext_lsq,
+            ylag=[i + 1 for i in range(self.inp_lag)],
+            xlag=[i + 1 for i in range(self.out_lag)],
+            info_criteria="aic",
+            estimator=self.estimator,
+            basis_function=basis_function,
+        )
+        model.fit(X=x_train, y=y_train)
+        yhat = model.predict(X=x_valid, y=y_valid)
+        rrse = root_relative_squared_error(y_valid, yhat)
+        print(rrse)
+        r = pd.DataFrame(
+            results(
+                model.final_model,
+                model.theta,
+                model.err,
+                model.n_terms,
+                err_precision=8,
+                dtype="sci",
+            ),
+            columns=["Regressors", "Parameters", "ERR"],
+        )
+        print(r)
+        plt.style.available
+        plot_results(
+            y=y_valid,
+            yhat=yhat,
+            n=1000,
+            title="test",
+            xlabel="Samples",
+            ylabel=r"y, $\hat{y}$",
+            data_color="#1f77b4",
+            model_color="#ff7f0e",
+            marker="o",
+            model_marker="*",
+            linewidth=1.5,
+            figsize=(10, 6),
+            style="seaborn-v0_8-notebook",
+            facecolor="white",
+        )
+        ee = compute_residues_autocorrelation(y_valid, yhat)
+        plot_residues_correlation(
+            data=ee, title="Residues", ylabel="$e^2$", style="seaborn-v0_8-notebook"
+        )
+        x1e = compute_cross_correlation(y_valid, yhat, x_valid)
+        plot_residues_correlation(
+            data=x1e, title="Residues", ylabel="$x_1e$", style="seaborn-v0_8-notebook"
+        )
         return
 
     def get_model_arduino_gui(self):
@@ -151,19 +217,19 @@ class Get_model(Base):
         first_column = [
             [sg.Text("Data acquisition", font=("Helvetica", 12, "bold"))],
             [sg.Text("Choose your arduino: ")],
-            [sg.Text("Sample period (s)")],
-            [sg.Text("Session duration (s)")],
             [sg.Text("Input signal")],
             [sg.Text("Plot data?")],
             [sg.Text("Save data?")],
             [sg.Text("Path")],
             [sg.Text("   ")],
             [sg.Text("System Identification", font=("Helvetica", 12, "bold"))],
+            [sg.Text("Degree")],
             [sg.Text("Output lag")],
             [sg.Text("Input lag")],
             [sg.Text("Number of information values")],
             [sg.Text("Estimator")],
             [sg.Text("Extended least squares algorithm")],
+            [sg.Text("Percentage of data for validacion")],
         ]
 
         second_column = [
@@ -176,8 +242,6 @@ class Get_model(Base):
                     key="-COM-",
                 )
             ],
-            [sg.I(self.ts, enable_events=True, key="-TS-", size=(40, 1))],
-            [sg.I(self.session_duration, enable_events=True, key="-SD-", size=(40, 1))],
             [
                 sg.DD(
                     values=("PRBS", ""),
@@ -207,16 +271,58 @@ class Get_model(Base):
             ],
             [sg.Text("    ")],
             [sg.Text("   ")],
-            [sg.Spin([i + 1 for i in range(1000)], size=(40, 1))],
-            [sg.Spin([i + 1 for i in range(1000)], size=(40, 1))],
-            [sg.Spin([i + 1 for i in range(1000)], size=(40, 1))],
             [
-                sg.DD(
-                    values=[i for i in Estimators.__dict__.keys() if i[:1] != "_"],
+                sg.Spin(
+                    [i + 1 for i in range(1000)],
                     size=(40, 1),
+                    initial_value=2,
+                    key="-Pol_deg-",
                 )
             ],
-            [sg.DD(values=("True", "False"), size=(40, 1))],
+            [
+                sg.Spin(
+                    [i + 1 for i in range(1000)],
+                    size=(40, 1),
+                    initial_value=3,
+                    key="-Out_lag-",
+                )
+            ],
+            [
+                sg.Spin(
+                    [i + 1 for i in range(1000)],
+                    size=(40, 1),
+                    initial_value=3,
+                    key="-Inp_lag-",
+                )
+            ],
+            [
+                sg.Spin(
+                    [i + 1 for i in range(1000)],
+                    size=(40, 1),
+                    initial_value=6,
+                    key="-N_info_val-",
+                )
+            ],
+            [
+                sg.Combo(
+                    values=[i for i in Estimators.__dict__.keys() if i[:1] != "_"],
+                    size=(40, 1),
+                    default_value="least_squares",
+                    key="-Estim_alg-",
+                )
+            ],
+            [
+                sg.Radio("True", "ext_lsq", default=True, key="-Ext_lsq-"),
+                sg.Radio("False", "ext_lsq", default=False),
+            ],
+            [
+                sg.Spin(
+                    [i + 1 for i in range(1000)],
+                    size=(40, 1),
+                    initial_value=15,
+                    key="-Perc_value-",
+                )
+            ],
         ]
 
         third_column = []
@@ -247,11 +353,11 @@ class Get_model(Base):
         prbs_infos = [
             [sg.Text("Input Informations", font=("Helvetica", 12, "bold"))],
             [sg.Text("Bits:")],
-            [sg.Input(self.prbs_bits, key="-prbs_n_bits-", size=(6, 1))],
+            [sg.Input(self.prbs_bits, key="-prbs_n_bits-", size=(20, 1))],
             [sg.Text("Seed:")],
-            [sg.Input(self.prbs_seed, key="-prbs_seed-", size=(6, 1))],
-            [sg.Text("TB_var:")],
-            [sg.Input(self.prbs_tb_var, key="-prbs_var_tb-", size=(6, 1))],
+            [sg.Input(self.prbs_seed, key="-prbs_seed-", size=(20, 1))],
+            [sg.Text("TB:")],
+            [sg.Input(self.tb, key="-prbs_tb-", size=(20, 1))],
         ]
 
         window.extend_layout(window["-third_column-"], prbs_infos)
@@ -274,8 +380,6 @@ class Get_model(Base):
                     self.data, self.time_var = [], []
 
                     # Separating variables
-                    self.ts = float(values["-TS-"])
-                    self.session_duration = float(values["-SD-"])
                     self.com_port = serial.tools.list_ports.comports()[
                         self.com_ports.index(values["-COM-"])
                     ].name
@@ -285,10 +389,17 @@ class Get_model(Base):
                     self.signal = Signal(
                         int(values["-prbs_n_bits-"]),
                         int(values["-prbs_seed-"]),
-                        int(values["-prbs_var_tb-"]),
+                        float(values["-prbs_tb-"]),
                     )
 
                     self.out_read = []
+                    self.degree = values["-Pol_deg-"]
+                    self.out_lag = values["-Out_lag-"]
+                    self.inp_lag = values["-Inp_lag-"]
+                    self.num_info_val = values["-N_info_val-"]
+                    self.estimator = values["-Estim_alg-"]
+                    self.ext_lsq = values["-Ext_lsq-"]
+                    self.perc_value = values["-Perc_value-"]
 
                 except BaseException:
                     self._error_window()

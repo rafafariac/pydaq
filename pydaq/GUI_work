@@ -37,7 +37,7 @@ def show_arduino_form():
         elif event == "Get_model":
             s = Get_model()
             s.get_model_arduino_gui()
-    window.close()
+    window.close(),
 
 
 def show_nidaq_form():
