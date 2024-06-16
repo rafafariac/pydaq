@@ -349,6 +349,7 @@ class Get_data(Base):
         self.cycles = int(np.floor(self.session_duration / self.ts)) + 1
 
         # Oppening ports
+        print(self.com_port)
         self._open_serial()
 
         if self.plot:  # If plot, start updatable plot

@@ -33,7 +33,8 @@ class Get_model(Base):
         channel="ai0",
         terminal="Diff",
         com="COM1",
-        tb=0.5,
+        ts=0.5,
+        var_tb=1,
         session_duration=10.0,
         save=True,
         plot=True,
@@ -42,11 +43,14 @@ class Get_model(Base):
         super().__init__()
         self.device = device
         self.channel = channel
-        self.tb = tb
+        self.session_duration = session_duration
+        self.ts = ts
+        self.var_tb = var_tb
         self.save = save
         self.plot = plot
         self.signal = Signal(6, 100, 1)
         self.legend = ["Input", "Output"]
+        self.sinal = self.prbs_final()
 
         self.out_read = []
         self.time_var = []
@@ -80,19 +84,36 @@ class Get_model(Base):
         self.prbs_bits = 6
         self.prbs_seed = 100
 
+    def prbs_final(self):
+        TB = self.ts * self.var_tb
+
+        self.cycles = int(np.floor(self.session_duration / TB)) + 1
+        len_sinal_prbs = len(self.signal.sinal_prbs)
+
+        # Verifica se Nt é menor que o comprimento de self.signal.sinal_prbs
+        if self.cycles < len_sinal_prbs:
+            return self.signal.sinal_prbs[: self.cycles]
+        else:
+            n_rep_int = self.cycles // len_sinal_prbs
+            n_resto = self.cycles % len_sinal_prbs
+            sinal = self.signal.sinal_prbs * n_rep_int
+            sinal.extend(self.signal.sinal_prbs[:n_resto])
+            print(len(sinal))
+
+        return sinal
+
     def get_model_arduino(self):
-        sinal = self.signal.sinal_prbs
+
         self.data = []
         self.time_var = []
 
         self._check_path()
-
-        self.cycles = len(sinal)
+        self.sinal = self.prbs_final()
+        sinal = np.array(self.sinal)
 
         self._open_serial()
 
         self.data_send = [b"1" if i == 1 else b"0" for i in sinal]
-        sinal = np.array(sinal)
 
         if self.plot:  # If plot, start updatable plot
             self.title = f"PYDAQ - Geting Data. Arduino, Port: {self.com_port}"
@@ -103,15 +124,14 @@ class Get_model(Base):
         for k in range(self.cycles):
 
             st = time.time()
-
             self.ser.reset_input_buffer()  # Reseting serial input buffer
             self.ser.write(self.data_send[k])
 
-            temp = int(self.ser.read(13).split()[-2].decode("UTF-8")) * self.ard_vpb
+            temp = int(self.ser.read(14).split()[-2].decode("UTF-8")) * self.ard_vpb
 
             self.out_read.append(temp)
 
-            self.time_var.append(k * self.tb)
+            self.time_var.append(k * self.ts)
             if self.plot:
 
                 # Checking if there is still an open figure. If not, stop the for loop.
@@ -123,7 +143,7 @@ class Get_model(Base):
                 # Updating data values
                 self._update_plot(
                     [self.time_var, self.time_var],
-                    [sinal[0 : k + 1], self.out_read[0 : k + 1]],
+                    [sinal[0 : k + 1] * 5, self.out_read[0 : k + 1]],
                     2,
                 )
             print(f"Iteration: {k} of {self.cycles-1}")
@@ -131,7 +151,7 @@ class Get_model(Base):
             et = time.time()
 
             try:
-                time.sleep(self.tb + (st - et))
+                time.sleep(self.ts + (st - et))
             except:
                 warnings.warn(
                     "Time spent to append data and update interface was greater than ts. "
@@ -141,16 +161,20 @@ class Get_model(Base):
         self.ser.write(b"0")
         self.ser.close()
 
+        TB = self.ts * self.var_tb
+
+        time_save = int(self.start_save_time / TB)
+
         data_x = sinal
         data_y = np.array(self.out_read)
         perc_index = floor(data_x.shape[0] - data_x.shape[0] * (self.perc_value / 100))
 
         x_train, x_valid = (
-            data_x[0:perc_index].reshape(-1, 1),
+            data_x[time_save:perc_index].reshape(-1, 1),
             data_x[perc_index:].reshape(-1, 1),
         )
         y_train, y_valid = (
-            data_y[0:perc_index].reshape(-1, 1),
+            data_y[time_save:perc_index].reshape(-1, 1),
             data_y[perc_index:].reshape(-1, 1),
         )
 
@@ -207,7 +231,21 @@ class Get_model(Base):
         plot_residues_correlation(
             data=x1e, title="Residues", ylabel="$x_1e$", style="seaborn-v0_8-notebook"
         )
+        self.display_results_in_window(r, rrse)
         return
+
+    def display_results_in_window(self, results_df, rrse):
+        layout = [
+            [sg.Text("Model Results", font=("Helvetica", 16))],
+            [sg.Multiline(results_df.to_string(), size=(80, 20))],
+            [sg.Button("OK")],
+        ]
+        window = sg.Window("Results", layout, modal=True)
+        while True:
+            event, values = window.read()
+            if event == "OK" or event == sg.WIN_CLOSED:
+                break
+        window.close()
 
     def get_model_arduino_gui(self):
 
@@ -216,6 +254,9 @@ class Get_model(Base):
         first_column = [
             [sg.Text("Data acquisition", font=("Helvetica", 12, "bold"))],
             [sg.Text("Choose your arduino: ")],
+            [sg.Text("Sample period (s)")],
+            [sg.Text("Session duration (s)")],
+            [sg.Text("Start Saving Data (s)")],
             [sg.Text("Input signal")],
             [sg.Text("Plot data?")],
             [sg.Text("Save data?")],
@@ -241,12 +282,22 @@ class Get_model(Base):
                     key="-COM-",
                 )
             ],
+            [sg.I(self.ts, enable_events=True, key="-TS-", size=(40, 1))],
+            [sg.I(self.session_duration, enable_events=True, key="-SD-", size=(40, 1))],
             [
                 sg.DD(
                     values=("PRBS", ""),
                     enable_events=True,
                     key="-Sig_type-",
                     size=(40, 1),
+                )
+            ],
+            [
+                sg.Spin(
+                    [i + 1 for i in range(1000)],
+                    size=(40, 1),
+                    initial_value=4,
+                    key="-Save_val_time-",
                 )
             ],
             [
@@ -356,7 +407,7 @@ class Get_model(Base):
             [sg.Text("Seed:")],
             [sg.Input(self.prbs_seed, key="-prbs_seed-", size=(20, 1))],
             [sg.Text("TB:")],
-            [sg.Input(self.tb, key="-prbs_tb-", size=(20, 1))],
+            [sg.Input(self.var_tb, key="-prbs_tb-", size=(20, 1))],
         ]
 
         window.extend_layout(window["-third_column-"], prbs_infos)
@@ -382,13 +433,16 @@ class Get_model(Base):
                     self.com_port = serial.tools.list_ports.comports()[
                         self.com_ports.index(values["-COM-"])
                     ].name
+                    self.ts = float(values["-TS-"])
+                    self.session_duration = float(values["-SD-"])
+                    self.start_save_time = int(values["-Save_val_time-"])
                     self.save = values["-Save-"]
                     self.path = values["-Path-"]
                     self.plot = values["-Plot-"]
                     self.signal = Signal(
                         int(values["-prbs_n_bits-"]),
                         int(values["-prbs_seed-"]),
-                        float(values["-prbs_tb-"]),
+                        int(values["-prbs_tb-"]),
                     )
 
                     self.out_read = []
