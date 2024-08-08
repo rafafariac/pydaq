@@ -168,6 +168,8 @@ class GetModel(Base):
         com="COM1",
         ts=0.5,
         var_tb=1,
+        ao_min=0,
+        ao_max=5,
         session_duration=10.0,
         save=True,
         plot=True,
@@ -210,6 +212,8 @@ class GetModel(Base):
         self.theta = None
         self.n_terms = None
         self.terminal = self.term_map[terminal]
+        self.ao_min = ao_min
+        self.ao_max = ao_max
 
         self.out_read = []
         self.time_var = []

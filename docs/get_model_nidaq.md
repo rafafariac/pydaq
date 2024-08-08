@@ -1,18 +1,6 @@
-# Model Acquisition with Arduino
+# Model Acquisition with NIDAQ Boards
 
-**NOTE 1**: before working with PYDAQ, device driver should be installed and working correctly as a DAQ (Data Acquisition) device
-
-**NOTE 2** To acquire/send data with arduino, the code provided here (located at [arduino_code](https://github.com/samirmartins/pydaq/tree/main/pydaq/arduino_code)) 
-should be uploaded in Arduino first. Default input port is A0, and default output port is 13, those ports can be chanced in the above mencioned code. To the output code is necessary to use a digital output, since this is a limitation of Arduino Boards.
-
-**NOTE 3** PYDAQ is programmed to use 10 bits as a ADC resolution, and 0V and 5V as the input range.
-To change this, the user can alter the following variables:
-
-```python
-self.arduino_ai_bits = 10
-self.ard_ai_max = 5
-self.ard_ai_min = 0
-```
+**NOTE**: before working with PYDAQ, device driver should be installed and working correctly as a DAQ (Data Acquisition) device
 
 ## Adquiring the model using Graphical User Interface (GUI)
 
@@ -23,19 +11,23 @@ from pydaq.pydaq_global import PydaqGui
 
 PydaqGui()
 ```
-After this command, the following screen will show up, in the Get Model screen the user is able to define parameters and start to adquire the model.
+After this command, the following screen will show up, where the user should select the NIDAQ option and go to Get Model tab, to be able to define parameters and start to acquire data.
 
-![](img/get_model_arduino.PNG)
+![](img/get_model_nidaq.PNG)
 
 ## Parameters
 
- - **Choose your Arduino**: This option allows you to choose the Arduino you are going to use.
+ - **Choose Device**: The user is able to select desired device.
+
+ - **Choose Channel**: The user is able to select desired channel.
+
+ - **Terminal Configuration**: The user can chance the terminal configuration (Differential, RSE and NRSE).
 
  - **Sample Period**: The user can change the time interval between sample readings.
 
- - **Start saving data**: Choose when the data will start being recorded to obtain the model.
+ - **Start Saving Data**: Choose when the data will start being recorded to obtain the model.
 
- - **Session duration**: The user can choose the session duration, which will change the number of iterations.
+ - **Session Duration**: The user can choose the session duration, which will change the number of iterations.
 
  - **Plot and Save data**: The user can choose whether to plot and save the data.
 
@@ -48,6 +40,8 @@ After this command, the following screen will show up, in the Get Model screen t
  - **Advanced Settings**: Allows customization of the parameters for obtaining the model.
 
 By pressing the **Get Model** button, the program will start and the model will be obtained.
+
+<REFAZER O RODANDO POR LINEAS DE CODIGO>
 
 ## Run Get model from the command line
 ```python
